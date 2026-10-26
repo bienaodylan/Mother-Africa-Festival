@@ -1,0 +1,6 @@
+{
+  "name": "Mother Africa Festival 2026",
+  "description": "Official portal for Mother Africa Festival 2026. Contemporary African music, radical sound, immersive art and underground culture in Abidjan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
