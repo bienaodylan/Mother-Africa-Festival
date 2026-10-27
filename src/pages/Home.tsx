@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from '../components/Logo.tsx';
 import { MENU, FACTS } from '../data.ts';
@@ -14,18 +14,31 @@ interface HomeProps {
 
 export const Home: React.FC<HomeProps> = ({ go }) => {
   const [open, setOpen] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const toggle = (id: string) => {
-    setOpen((prev) => (prev === id ? null : id));
+    setOpen((prev) => {
+      const next = prev === id ? null : id;
+      if (next) {
+        // Défilement automatique fluide vers le panneau ouvert pour voir directement le bouton [ EXPLORER ]
+        setTimeout(() => {
+          rowRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 80);
+        setTimeout(() => {
+          rowRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 250);
+      }
+      return next;
+    });
   };
 
   return (
     <div className="min-h-screen flex flex-col justify-between select-none">
-      {/* Zone du haut (flex-1) : centre verticalement logo et textes */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-12 sm:py-16">
+      {/* Zone du haut (flex-1) : centre verticalement logo et textes format d'origine */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-8 sm:py-12">
         <Logo size="large" />
 
-        <div className="mt-6 sm:mt-8 space-y-1 sm:space-y-2">
+        <div className="mt-4 sm:mt-6 space-y-1">
           <h1 className="font-display text-2xl sm:text-4xl lg:text-5xl text-[#F4F1EA] tracking-normal leading-tight">
             {FACTS.edition}
           </h1>
@@ -46,6 +59,9 @@ export const Home: React.FC<HomeProps> = ({ go }) => {
           return (
             <div
               key={item.id}
+              ref={(el) => {
+                rowRefs.current[item.id] = el;
+              }}
               className={`border-t border-[#F4F1EA]/40 ${
                 isLast ? 'border-b border-[#F4F1EA]/40' : ''
               }`}
@@ -63,9 +79,19 @@ export const Home: React.FC<HomeProps> = ({ go }) => {
                       : 'bg-transparent text-[#F4F1EA] hover:text-[#C85A17]'
                   }`}
                 >
-                  <span className="font-display text-5xl sm:text-7xl lg:text-8xl leading-none">
-                    {item.label}
-                  </span>
+                  {item.art ? (
+                    <img
+                      src={item.art}
+                      alt={item.label}
+                      className={`h-7 xs:h-9 sm:h-12 md:h-16 lg:h-20 w-auto object-contain transition-all duration-150 ${
+                        isOpen ? 'brightness-110 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]' : 'opacity-90 hover:opacity-100'
+                      }`}
+                    />
+                  ) : (
+                    <span className="font-display text-5xl sm:text-7xl lg:text-8xl leading-none">
+                      {item.label}
+                    </span>
+                  )}
                   <span
                     className="font-display text-4xl sm:text-6xl lg:text-7xl leading-none shrink-0 ml-4"
                     aria-hidden="true"
@@ -85,10 +111,10 @@ export const Home: React.FC<HomeProps> = ({ go }) => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                     className="overflow-hidden"
                   >
-                    <div className="relative min-h-[220px] sm:min-h-[280px] flex items-end p-6 sm:p-10 lg:p-12 overflow-hidden">
+                    <div className="relative min-h-[200px] sm:min-h-[260px] flex items-end p-6 sm:p-10 lg:p-12 overflow-hidden">
                       {/* Photo de concert d'arrière-plan */}
                       <img
                         src={item.image}

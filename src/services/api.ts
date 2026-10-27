@@ -211,10 +211,11 @@ export const api = {
    */
   async createOrder(params: {
     user: User;
-    categoryId: string;
-    categoryName: string;
-    quantity: number;
-    unitPrice: number;
+    categoryId?: string;
+    categoryName?: string;
+    quantity?: number;
+    unitPrice?: number;
+    items?: Array<{ categoryId: string; categoryName: string; quantity: number; unitPrice: number }>;
     holderNames: string[];
     paymentMethod: string;
   }): Promise<Order> {
@@ -223,31 +224,52 @@ export const api = {
     const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
     const tickets: PurchasedTicket[] = [];
 
-    // Génération des billets unitaires avec références uniques format MAF26-XXXXXX
-    for (let i = 0; i < params.quantity; i++) {
-      const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const reference = `MAF26-${randomHex}`;
-      const holder =
-        params.holderNames[i] && params.holderNames[i].trim().length > 0
-          ? params.holderNames[i].trim().toUpperCase()
-          : `${params.user.firstName} ${params.user.lastName}`;
+    const normalizedItems = params.items && params.items.length > 0
+      ? params.items
+      : [
+          {
+            categoryId: params.categoryId || 'grand-public',
+            categoryName: params.categoryName || 'GRAND PUBLIC',
+            quantity: params.quantity || 1,
+            unitPrice: params.unitPrice || 10000
+          }
+        ];
 
-      tickets.push({
-        reference,
-        orderId,
-        category: params.categoryName,
-        categoryId: params.categoryId,
-        price: `${params.unitPrice.toLocaleString('fr-FR')} FCFA`,
-        numericPrice: params.unitPrice,
-        holderName: holder,
-        purchaseDate: new Date().toLocaleDateString('fr-FR', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric'
-        }),
-        eventDates: FACTS.dates,
-        location: FACTS.lieu
-      });
+    let holderIndex = 0;
+    let totalOrderPrice = 0;
+    let totalOrderQuantity = 0;
+
+    for (const item of normalizedItems) {
+      totalOrderPrice += item.unitPrice * item.quantity;
+      totalOrderQuantity += item.quantity;
+
+      for (let i = 0; i < item.quantity; i++) {
+        const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const reference = `MAF26-${randomHex}`;
+        const holder =
+          params.holderNames[holderIndex] && params.holderNames[holderIndex].trim().length > 0
+            ? params.holderNames[holderIndex].trim().toUpperCase()
+            : `${params.user.firstName} ${params.user.lastName}`;
+
+        tickets.push({
+          reference,
+          orderId,
+          category: item.categoryName,
+          categoryId: item.categoryId,
+          price: `${item.unitPrice.toLocaleString('fr-FR')} FCFA`,
+          numericPrice: item.unitPrice,
+          holderName: holder,
+          purchaseDate: new Date().toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+          }),
+          eventDates: FACTS.dates,
+          location: FACTS.lieu
+        });
+
+        holderIndex++;
+      }
     }
 
     const order: Order = {
@@ -255,11 +277,11 @@ export const api = {
       userId: params.user.id,
       userEmail: params.user.email,
       userName: `${params.user.firstName} ${params.user.lastName}`,
-      categoryId: params.categoryId,
-      categoryName: params.categoryName,
-      quantity: params.quantity,
-      unitPrice: params.unitPrice,
-      totalPrice: params.unitPrice * params.quantity,
+      categoryId: normalizedItems[0].categoryId,
+      categoryName: normalizedItems.map((it) => `${it.quantity}x ${it.categoryName}`).join(', '),
+      quantity: totalOrderQuantity,
+      unitPrice: normalizedItems[0].unitPrice,
+      totalPrice: totalOrderPrice,
       paymentMethod: params.paymentMethod,
       createdAt: new Date().toISOString(),
       tickets

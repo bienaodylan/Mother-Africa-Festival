@@ -74,18 +74,18 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-8 max-w-xl mx-auto select-none">
+    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-10 max-w-2xl mx-auto select-none">
       {!showForgotPassword ? (
-        <div>
+        <div className="bg-black/70 backdrop-blur-md border-4 border-[#F4F1EA] p-8 sm:p-12 lg:p-14 shadow-2xl">
           {/* Titre CONNEXION */}
-          <div className="mb-8">
-            <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
+          <div className="mb-10">
+            <span className="font-display text-base sm:text-lg text-[#C85A17] tracking-widest uppercase block mb-2">
               ESPACE MEMBRE · MOTHER AFRICA
             </span>
-            <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
+            <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none text-shadow-strong">
               CONNEXION
             </h1>
-            <p className="font-body text-sm sm:text-base text-[#F4F1EA]/80 mt-2">
+            <p className="font-body text-base sm:text-lg text-[#F4F1EA]/90 mt-4 leading-relaxed">
               Un compte est nécessaire pour sécuriser vos billets nominatifs et générer vos QR codes.
             </p>
           </div>
@@ -94,19 +94,19 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
           {errors.general && (
             <div
               role="alert"
-              className="mb-6 p-4 border-2 border-[#C85A17] bg-[#C85A17]/20 font-body text-sm text-[#F4F1EA]"
+              className="mb-8 p-5 border-2 border-[#C85A17] bg-[#C85A17]/25 font-body text-base text-[#F4F1EA]"
             >
               {errors.general}
             </div>
           )}
 
           {/* Formulaire de connexion */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-6">
+          <form onSubmit={handleSubmit} noValidate className="space-y-8">
             {/* Champ Email */}
             <div>
               <label
                 htmlFor="login-email"
-                className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block mb-2"
+                className="font-display text-xl sm:text-2xl text-[#F4F1EA] uppercase block mb-3 text-shadow-sm"
               >
                 ADRESSE EMAIL
               </label>
@@ -117,7 +117,7 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
                 onChange={(e) => setEmail(e.target.value)}
                 aria-invalid={!!errors.email}
                 aria-describedby={errors.email ? 'login-email-error' : undefined}
-                className={`w-full px-4 py-3.5 bg-transparent border-4 text-[#F4F1EA] font-body text-base placeholder-[#F4F1EA]/40 transition-colors ${
+                className={`w-full px-5 py-4 bg-black/50 border-4 text-[#F4F1EA] font-body text-lg placeholder-[#F4F1EA]/40 transition-colors ${
                   errors.email
                     ? 'border-red-500 focus:border-red-500'
                     : 'border-[#F4F1EA] focus:border-[#C85A17]'
@@ -126,7 +126,7 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
                 autoComplete="email"
               />
               {errors.email && (
-                <p id="login-email-error" className="font-body text-xs text-[#C85A17] mt-1.5 font-bold">
+                <p id="login-email-error" className="font-body text-sm sm:text-base text-[#C85A17] mt-2 font-bold">
                   {errors.email}
                 </p>
               )}
@@ -134,19 +134,19 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
 
             {/* Champ Mot de Passe */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <label
                   htmlFor="login-password"
-                  className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block"
+                  className="font-display text-xl sm:text-2xl text-[#F4F1EA] uppercase block text-shadow-sm"
                 >
                   MOT DE PASSE
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowForgotPassword(true)}
-                  className="font-body text-xs text-[#C85A17] hover:underline uppercase tracking-wider cursor-pointer"
+                  className="font-body text-sm sm:text-base text-[#C85A17] hover:underline uppercase tracking-wider cursor-pointer font-bold"
                 >
-                  MOT DE PASSE OUBLIÉ ?
+                  [ MOT DE PASSE OUBLIÉ ? ]
                 </button>
               </div>
               <input
@@ -156,7 +156,7 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? 'login-password-error' : undefined}
-                className={`w-full px-4 py-3.5 bg-transparent border-4 text-[#F4F1EA] font-body text-base placeholder-[#F4F1EA]/40 transition-colors ${
+                className={`w-full px-5 py-4 bg-black/50 border-4 text-[#F4F1EA] font-body text-lg placeholder-[#F4F1EA]/40 transition-colors ${
                   errors.password
                     ? 'border-red-500 focus:border-red-500'
                     : 'border-[#F4F1EA] focus:border-[#C85A17]'
@@ -165,18 +165,18 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
                 autoComplete="current-password"
               />
               {errors.password && (
-                <p id="login-password-error" className="font-body text-xs text-[#C85A17] mt-1.5 font-bold">
+                <p id="login-password-error" className="font-body text-sm sm:text-base text-[#C85A17] mt-2 font-bold">
                   {errors.password}
                 </p>
               )}
             </div>
 
             {/* Bouton de Soumission */}
-            <div className="pt-2">
+            <div className="pt-4">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full brut-btn py-4 text-xl sm:text-2xl"
+                className="w-full brut-btn py-5 text-2xl sm:text-3xl"
               >
                 {isSubmitting ? 'VÉRIFICATION EN COURS...' : '[ SE CONNECTER ]'}
               </button>
@@ -184,14 +184,14 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
           </form>
 
           {/* Lien vers Inscription */}
-          <div className="mt-8 pt-6 border-t border-[#F4F1EA]/25 text-center">
-            <p className="font-body text-sm text-[#F4F1EA]/80 mb-3">
+          <div className="mt-10 pt-8 border-t-2 border-[#F4F1EA]/25 text-center">
+            <p className="font-body text-base sm:text-lg text-[#F4F1EA]/90 mb-4">
               Vous n'avez pas encore de compte festivalier ?
             </p>
             <button
               type="button"
               onClick={() => go(`/compte/inscription${nextRoute ? `?next=${encodeURIComponent(nextRoute)}` : ''}`)}
-              className="font-display text-lg sm:text-xl text-[#C85A17] hover:underline uppercase cursor-pointer"
+              className="font-display text-xl sm:text-2xl text-[#C85A17] hover:underline uppercase cursor-pointer"
             >
               [ CRÉER MON COMPTE EN 1 MINUTE ]
             </button>
@@ -199,18 +199,18 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
         </div>
       ) : (
         /* Écran simulé Mot de Passe Oublié */
-        <div className="border-4 border-[#F4F1EA] p-6 sm:p-10 bg-[#0c1c11]">
-          <h2 className="font-display text-3xl sm:text-5xl text-[#F4F1EA] leading-tight mb-2">
+        <div className="border-4 border-[#F4F1EA] p-8 sm:p-12 bg-black/75 backdrop-blur-md shadow-2xl">
+          <h2 className="font-display text-4xl sm:text-6xl text-[#F4F1EA] leading-tight mb-4 text-shadow-strong">
             RÉCUPÉRATION DU COMPTE
           </h2>
-          <p className="font-body text-xs sm:text-sm text-[#F4F1EA]/80 mb-6">
+          <p className="font-body text-base sm:text-lg text-[#F4F1EA]/90 mb-8 leading-relaxed">
             Entrez votre adresse email. Un lien de réinitialisation sécurisé vous sera transmis immédiatement.
           </p>
 
           {!resetSuccess ? (
-            <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+            <form onSubmit={handleForgotPasswordSubmit} className="space-y-6">
               <div>
-                <label htmlFor="forgot-email" className="font-display text-sm text-[#F4F1EA] uppercase block mb-1">
+                <label htmlFor="forgot-email" className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block mb-3">
                   EMAIL DU COMPTE
                 </label>
                 <input
@@ -219,27 +219,27 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
                   required
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-transparent border-4 border-[#F4F1EA] text-[#F4F1EA] font-body text-sm focus:border-[#C85A17] focus:outline-none"
+                  className="w-full px-5 py-4 bg-black/50 border-4 border-[#F4F1EA] text-[#F4F1EA] font-body text-lg focus:border-[#C85A17] focus:outline-none"
                   placeholder="votre.email@domaine.com"
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button type="submit" className="flex-1 brut-btn py-3 text-base">
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <button type="submit" className="flex-1 brut-btn py-4 text-xl">
                   ENVOYER LE LIEN
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowForgotPassword(false)}
-                  className="py-3 px-4 font-display text-sm text-[#F4F1EA]/80 hover:text-[#C85A17] uppercase"
+                  className="py-4 px-6 font-display text-lg text-[#F4F1EA] hover:text-[#C85A17] uppercase"
                 >
                   RETOUR
                 </button>
               </div>
             </form>
           ) : (
-            <div className="space-y-4">
-              <div className="p-4 border-2 border-[#C85A17] bg-[#C85A17]/20 font-body text-xs sm:text-sm text-[#F4F1EA]">
+            <div className="space-y-6">
+              <div className="p-5 border-2 border-[#C85A17] bg-[#C85A17]/25 font-body text-base text-[#F4F1EA]">
                 Un email de réinitialisation fictif a été généré pour <strong>{forgotEmail}</strong>. (Simulation d'environnement de test).
               </div>
               <button
@@ -248,7 +248,7 @@ export const Login: React.FC<LoginProps> = ({ go, nextRoute = '/billets/commande
                   setShowForgotPassword(false);
                   setResetSuccess(false);
                 }}
-                className="w-full brut-btn py-3 text-base"
+                className="w-full brut-btn py-4 text-xl"
               >
                 RETOUR À LA CONNEXION
               </button>

@@ -85,207 +85,209 @@ export const Register: React.FC<RegisterProps> = ({ go, nextRoute = '/billets/co
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-8 max-w-xl mx-auto select-none">
-      {/* Titre INSCRIPTION */}
-      <div className="mb-8">
-        <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
-          NOUVEAU FESTIVALIER
-        </span>
-        <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
-          INSCRIPTION
-        </h1>
-        <p className="font-body text-sm sm:text-base text-[#F4F1EA]/80 mt-2">
-          Créez votre profil pour réserver et retrouver vos billets nominatifs en quelques secondes.
-        </p>
-      </div>
-
-      {/* Message d'erreur général */}
-      {errors.general && (
-        <div
-          role="alert"
-          className="mb-6 p-4 border-2 border-[#C85A17] bg-[#C85A17]/20 font-body text-sm text-[#F4F1EA]"
-        >
-          {errors.general}
+    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-10 max-w-2xl mx-auto select-none">
+      <div className="bg-black/70 backdrop-blur-md border-4 border-[#F4F1EA] p-8 sm:p-12 lg:p-14 shadow-2xl">
+        {/* Titre INSCRIPTION */}
+        <div className="mb-10">
+          <span className="font-display text-base sm:text-lg text-[#C85A17] tracking-widest uppercase block mb-2">
+            NOUVEAU FESTIVALIER
+          </span>
+          <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none text-shadow-strong">
+            INSCRIPTION
+          </h1>
+          <p className="font-body text-base sm:text-lg text-[#F4F1EA]/90 mt-4 leading-relaxed">
+            Créez votre profil pour réserver et retrouver vos billets nominatifs en quelques secondes.
+          </p>
         </div>
-      )}
 
-      {/* Formulaire d'inscription */}
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        {/* Prénom & Nom */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Message d'erreur général */}
+        {errors.general && (
+          <div
+            role="alert"
+            className="mb-8 p-5 border-2 border-[#C85A17] bg-[#C85A17]/25 font-body text-base text-[#F4F1EA]"
+          >
+            {errors.general}
+          </div>
+        )}
+
+        {/* Formulaire d'inscription avec labels aérés et grands inputs */}
+        <form onSubmit={handleSubmit} noValidate className="space-y-6 sm:space-y-8">
+          {/* Prénom & Nom */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label
+                htmlFor="reg-firstname"
+                className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block mb-2.5 text-shadow-sm"
+              >
+                PRÉNOM
+              </label>
+              <input
+                id="reg-firstname"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                aria-invalid={!!errors.firstName}
+                aria-describedby={errors.firstName ? 'reg-firstname-error' : undefined}
+                className={`w-full px-5 py-4 bg-black/50 border-4 text-[#F4F1EA] font-body text-lg placeholder-[#F4F1EA]/40 transition-colors ${
+                  errors.firstName
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-[#F4F1EA] focus:border-[#C85A17]'
+                } focus:outline-none`}
+                placeholder="KOFFI"
+                autoComplete="given-name"
+              />
+              {errors.firstName && (
+                <p id="reg-firstname-error" className="font-body text-sm sm:text-base text-[#C85A17] mt-2 font-bold">
+                  {errors.firstName}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="reg-lastname"
+                className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block mb-2.5 text-shadow-sm"
+              >
+                NOM
+              </label>
+              <input
+                id="reg-lastname"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                aria-invalid={!!errors.lastName}
+                aria-describedby={errors.lastName ? 'reg-lastname-error' : undefined}
+                className={`w-full px-5 py-4 bg-black/50 border-4 text-[#F4F1EA] font-body text-lg placeholder-[#F4F1EA]/40 transition-colors ${
+                  errors.lastName
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-[#F4F1EA] focus:border-[#C85A17]'
+                } focus:outline-none`}
+                placeholder="KOUASSI"
+                autoComplete="family-name"
+              />
+              {errors.lastName && (
+                <p id="reg-lastname-error" className="font-body text-sm sm:text-base text-[#C85A17] mt-2 font-bold">
+                  {errors.lastName}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Email */}
           <div>
             <label
-              htmlFor="reg-firstname"
-              className="font-display text-base sm:text-lg text-[#F4F1EA] uppercase block mb-1.5"
+              htmlFor="reg-email"
+              className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block mb-2.5 text-shadow-sm"
             >
-              PRÉNOM
+              ADRESSE EMAIL
             </label>
             <input
-              id="reg-firstname"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              aria-invalid={!!errors.firstName}
-              aria-describedby={errors.firstName ? 'reg-firstname-error' : undefined}
-              className={`w-full px-4 py-3 bg-transparent border-4 text-[#F4F1EA] font-body text-base placeholder-[#F4F1EA]/40 transition-colors ${
-                errors.firstName
+              id="reg-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'reg-email-error' : undefined}
+              className={`w-full px-5 py-4 bg-black/50 border-4 text-[#F4F1EA] font-body text-lg placeholder-[#F4F1EA]/40 transition-colors ${
+                errors.email
                   ? 'border-red-500 focus:border-red-500'
                   : 'border-[#F4F1EA] focus:border-[#C85A17]'
               } focus:outline-none`}
-              placeholder="KOFFI"
-              autoComplete="given-name"
+              placeholder="koffi.kouassi@exemple.ci"
+              autoComplete="email"
             />
-            {errors.firstName && (
-              <p id="reg-firstname-error" className="font-body text-xs text-[#C85A17] mt-1 font-bold">
-                {errors.firstName}
+            {errors.email && (
+              <p id="reg-email-error" className="font-body text-sm sm:text-base text-[#C85A17] mt-2 font-bold">
+                {errors.email}
               </p>
             )}
           </div>
 
+          {/* Téléphone WhatsApp */}
           <div>
             <label
-              htmlFor="reg-lastname"
-              className="font-display text-base sm:text-lg text-[#F4F1EA] uppercase block mb-1.5"
+              htmlFor="reg-phone"
+              className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block mb-2.5 text-shadow-sm"
             >
-              NOM
+              TÉLÉPHONE (WHATSAPP)
             </label>
             <input
-              id="reg-lastname"
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              aria-invalid={!!errors.lastName}
-              aria-describedby={errors.lastName ? 'reg-lastname-error' : undefined}
-              className={`w-full px-4 py-3 bg-transparent border-4 text-[#F4F1EA] font-body text-base placeholder-[#F4F1EA]/40 transition-colors ${
-                errors.lastName
+              id="reg-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              aria-invalid={!!errors.phone}
+              aria-describedby={errors.phone ? 'reg-phone-error' : undefined}
+              className={`w-full px-5 py-4 bg-black/50 border-4 text-[#F4F1EA] font-body text-lg placeholder-[#F4F1EA]/40 transition-colors ${
+                errors.phone
                   ? 'border-red-500 focus:border-red-500'
                   : 'border-[#F4F1EA] focus:border-[#C85A17]'
               } focus:outline-none`}
-              placeholder="KOUASSI"
-              autoComplete="family-name"
+              placeholder="+225 07 XX XX XX XX"
+              autoComplete="tel"
             />
-            {errors.lastName && (
-              <p id="reg-lastname-error" className="font-body text-xs text-[#C85A17] mt-1 font-bold">
-                {errors.lastName}
+            {errors.phone && (
+              <p id="reg-phone-error" className="font-body text-sm sm:text-base text-[#C85A17] mt-2 font-bold">
+                {errors.phone}
               </p>
             )}
           </div>
-        </div>
 
-        {/* Email */}
-        <div>
-          <label
-            htmlFor="reg-email"
-            className="font-display text-base sm:text-lg text-[#F4F1EA] uppercase block mb-1.5"
-          >
-            ADRESSE EMAIL
-          </label>
-          <input
-            id="reg-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-invalid={!!errors.email}
-            aria-describedby={errors.email ? 'reg-email-error' : undefined}
-            className={`w-full px-4 py-3 bg-transparent border-4 text-[#F4F1EA] font-body text-base placeholder-[#F4F1EA]/40 transition-colors ${
-              errors.email
-                ? 'border-red-500 focus:border-red-500'
-                : 'border-[#F4F1EA] focus:border-[#C85A17]'
-            } focus:outline-none`}
-            placeholder="koffi.kouassi@exemple.ci"
-            autoComplete="email"
-          />
-          {errors.email && (
-            <p id="reg-email-error" className="font-body text-xs text-[#C85A17] mt-1 font-bold">
-              {errors.email}
-            </p>
-          )}
-        </div>
+          {/* Mot de passe */}
+          <div>
+            <label
+              htmlFor="reg-password"
+              className="font-display text-lg sm:text-xl text-[#F4F1EA] uppercase block mb-2.5 text-shadow-sm"
+            >
+              MOT DE PASSE (MIN. 8 CARACTÈRES)
+            </label>
+            <input
+              id="reg-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? 'reg-password-error' : undefined}
+              className={`w-full px-5 py-4 bg-black/50 border-4 text-[#F4F1EA] font-body text-lg placeholder-[#F4F1EA]/40 transition-colors ${
+                errors.password
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-[#F4F1EA] focus:border-[#C85A17]'
+              } focus:outline-none`}
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+            {errors.password && (
+              <p id="reg-password-error" className="font-body text-sm sm:text-base text-[#C85A17] mt-2 font-bold">
+                {errors.password}
+              </p>
+            )}
+          </div>
 
-        {/* Téléphone WhatsApp */}
-        <div>
-          <label
-            htmlFor="reg-phone"
-            className="font-display text-base sm:text-lg text-[#F4F1EA] uppercase block mb-1.5"
-          >
-            TÉLÉPHONE (WHATSAPP)
-          </label>
-          <input
-            id="reg-phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            aria-invalid={!!errors.phone}
-            aria-describedby={errors.phone ? 'reg-phone-error' : undefined}
-            className={`w-full px-4 py-3 bg-transparent border-4 text-[#F4F1EA] font-body text-base placeholder-[#F4F1EA]/40 transition-colors ${
-              errors.phone
-                ? 'border-red-500 focus:border-red-500'
-                : 'border-[#F4F1EA] focus:border-[#C85A17]'
-            } focus:outline-none`}
-            placeholder="+225 07 XX XX XX XX"
-            autoComplete="tel"
-          />
-          {errors.phone && (
-            <p id="reg-phone-error" className="font-body text-xs text-[#C85A17] mt-1 font-bold">
-              {errors.phone}
-            </p>
-          )}
-        </div>
+          {/* Bouton de Soumission */}
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full brut-btn py-5 text-2xl sm:text-3xl"
+            >
+              {isSubmitting ? 'CRÉATION DU COMPTE...' : '[ CRÉER MON COMPTE ET CONTINUER ]'}
+            </button>
+          </div>
+        </form>
 
-        {/* Mot de passe */}
-        <div>
-          <label
-            htmlFor="reg-password"
-            className="font-display text-base sm:text-lg text-[#F4F1EA] uppercase block mb-1.5"
-          >
-            MOT DE PASSE (MIN. 8 CARACTÈRES)
-          </label>
-          <input
-            id="reg-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={!!errors.password}
-            aria-describedby={errors.password ? 'reg-password-error' : undefined}
-            className={`w-full px-4 py-3 bg-transparent border-4 text-[#F4F1EA] font-body text-base placeholder-[#F4F1EA]/40 transition-colors ${
-              errors.password
-                ? 'border-red-500 focus:border-red-500'
-                : 'border-[#F4F1EA] focus:border-[#C85A17]'
-            } focus:outline-none`}
-            placeholder="••••••••"
-            autoComplete="new-password"
-          />
-          {errors.password && (
-            <p id="reg-password-error" className="font-body text-xs text-[#C85A17] mt-1 font-bold">
-              {errors.password}
-            </p>
-          )}
-        </div>
-
-        {/* Bouton de Soumission */}
-        <div className="pt-3">
+        {/* Déjà un compte ? */}
+        <div className="mt-10 pt-8 border-t-2 border-[#F4F1EA]/25 text-center">
+          <p className="font-body text-base sm:text-lg text-[#F4F1EA]/90 mb-4">
+            Vous possédez déjà un compte festivalier ?
+          </p>
           <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full brut-btn py-4 text-xl sm:text-2xl"
+            type="button"
+            onClick={() => go(`/compte/connexion${nextRoute ? `?next=${encodeURIComponent(nextRoute)}` : ''}`)}
+            className="font-display text-xl sm:text-2xl text-[#C85A17] hover:underline uppercase cursor-pointer"
           >
-            {isSubmitting ? 'CRÉATION DU COMPTE...' : '[ CRÉER MON COMPTE ET CONTINUER ]'}
+            [ SE CONNECTER À MON COMPTE ]
           </button>
         </div>
-      </form>
-
-      {/* Déjà un compte ? */}
-      <div className="mt-8 pt-6 border-t border-[#F4F1EA]/25 text-center">
-        <p className="font-body text-sm text-[#F4F1EA]/80 mb-3">
-          Vous possédez déjà un compte festivalier ?
-        </p>
-        <button
-          type="button"
-          onClick={() => go(`/compte/connexion${nextRoute ? `?next=${encodeURIComponent(nextRoute)}` : ''}`)}
-          className="font-display text-lg sm:text-xl text-[#C85A17] hover:underline uppercase cursor-pointer"
-        >
-          [ SE CONNECTER À MON COMPTE ]
-        </button>
       </div>
     </div>
   );

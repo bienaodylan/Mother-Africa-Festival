@@ -17,8 +17,17 @@ import { OrderConfirmation } from './pages/OrderConfirmation.tsx';
 import { Login } from './pages/Login.tsx';
 import { Register } from './pages/Register.tsx';
 import { MyTickets } from './pages/MyTickets.tsx';
+import { DigitalTicketDetail } from './pages/DigitalTicketDetail.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { CartProvider } from './context/CartContext.tsx';
+
+// Administration Pages
+import { AdminDashboard } from './pages/admin/AdminDashboard.tsx';
+import { AdminPasses } from './pages/admin/AdminPasses.tsx';
+import { AdminOrders } from './pages/admin/AdminOrders.tsx';
+import { AdminAccessControl } from './pages/admin/AdminAccessControl.tsx';
+import { AdminFinances } from './pages/admin/AdminFinances.tsx';
+import { AdminTeam } from './pages/admin/AdminTeam.tsx';
 
 interface ParsedRoute {
   path: string;
@@ -72,74 +81,130 @@ function AppContent() {
   };
 
   const currentPath = routeInfo.path;
+  const isAdminRoute = currentPath.startsWith('/admin');
   // L'image de fond n'est affichée que si la route est "/line-up"
   const currentBg = currentPath === '/line-up' ? bg : null;
 
   const editorialLinks = [
-    { label: 'LINE-UP', route: '/line-up' },
-    { label: 'FESTIVAL', route: '/festival' },
-    { label: 'ARCHIVES', route: '/archives' },
-    { label: 'BILLETS', route: '/billets' }
+    {
+      label: 'LINE-UP',
+      route: '/line-up',
+      art: '/assets/menu_art/menu_lineup_white.png'
+    },
+    {
+      label: 'FESTIVAL',
+      route: '/festival',
+      art: '/assets/menu_art/menu_festival_white.png'
+    },
+    {
+      label: 'ARCHIVES',
+      route: '/archives',
+      art: '/assets/menu_art/menu_archives_white.png'
+    },
+    {
+      label: 'BILLETTERIE',
+      route: '/billets',
+      art: '/assets/menu_art/menu_billetterie_white.png'
+    }
   ];
+
+  // Détection des routes de billets
+  const isMyTickets = currentPath === '/compte/mes-billets' || currentPath === '/compte/billets';
+  const isTicketDetail =
+    currentPath.startsWith('/compte/mes-billets/') && currentPath.split('/').length >= 4;
+  const ticketRefParam = isTicketDetail ? currentPath.split('/')[3] : '';
 
   return (
     <div className="relative min-h-screen bg-[#142B1A] text-[#F4F1EA] selection:bg-[#C85A17] selection:text-[#F4F1EA] overflow-x-hidden">
       {/* Fond global avec vagues SVG et photo plein écran au survol */}
-      <Background image={currentBg} />
+      {!isAdminRoute && <Background image={currentBg} />}
 
       {/* Conteneur z-10 en colonne respectant les safe areas */}
       <div className="relative z-10 min-h-screen flex flex-col pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
-        {/* En-tête sur toutes les pages sauf l'accueil */}
-        {currentPath !== '/' && (
-          <header className="w-full px-4 sm:px-8 lg:px-12 pt-6 pb-4 flex flex-wrap items-center justify-between gap-4 select-none">
+        {/* En-tête sur toutes les pages publiques sauf l'accueil et l'admin : 100% transparent */}
+        {currentPath !== '/' && !isAdminRoute && (
+          <header className="w-full px-3 sm:px-8 lg:px-12 pt-4 sm:pt-6 pb-3 sm:pb-4 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 select-none">
             {/* Petit logo à gauche (bouton qui renvoie à l'accueil) */}
-            <Logo size="small" onClick={() => go('/')} />
+            <div className="w-full md:w-auto flex items-center justify-between md:justify-start">
+              <Logo size="small" onClick={() => go('/')} />
 
-            {/* Navigation principale à droite + Lien Compte séparé */}
-            <div className="flex items-center gap-6 sm:gap-8 lg:gap-10">
-              <nav aria-label="Navigation éditoriale" className="flex items-center gap-6 sm:gap-8 lg:gap-10">
+              {/* Raccourci ADMIN visible sur desktop */}
+              <button
+                type="button"
+                onClick={() => go('/admin')}
+                className="hidden md:inline-block ml-4 px-2 py-0.5 border border-[#C85A17] text-[#C85A17] font-display text-[10px] tracking-wider uppercase hover:bg-[#C85A17] hover:text-[#F4F1EA] transition-colors cursor-pointer"
+                title="Panneau d'administration festivalier"
+              >
+                ADMIN
+              </button>
+            </div>
+
+            {/* Barre de navigation 100% sur UNE SEULE LIGNE HORIZONTALE sur mobile et desktop */}
+            <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-1.5 xs:gap-2.5 sm:gap-4 md:gap-6 flex-nowrap overflow-x-auto no-scrollbar">
+              <nav aria-label="Navigation éditoriale" className="flex items-center gap-1.5 xs:gap-2.5 sm:gap-4 md:gap-6 flex-nowrap shrink-0">
                 {editorialLinks.map((link) => {
-                  const isActive = currentPath === link.route || (link.route === '/billets' && currentPath.startsWith('/billets'));
+                  const isActive =
+                    currentPath === link.route ||
+                    (link.route === '/billets' && currentPath.startsWith('/billets'));
                   return (
                     <button
                       key={link.route}
                       type="button"
                       onClick={() => go(link.route)}
-                      className={`font-display text-2xl sm:text-3xl transition-colors duration-150 cursor-pointer pb-1 ${
+                      className={`relative flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 pb-1 ${
                         isActive
-                          ? 'text-[#C85A17] border-b-4 border-[#C85A17]'
-                          : 'text-[#F4F1EA] hover:text-[#C85A17]'
+                          ? 'border-b-2 sm:border-b-4 border-[#C85A17]'
+                          : 'border-b-2 sm:border-b-4 border-transparent opacity-85 hover:opacity-100'
                       }`}
                       aria-current={isActive ? 'page' : undefined}
+                      title={link.label}
                     >
-                      {link.label}
+                      <img
+                        src={link.art}
+                        alt={link.label}
+                        className={`h-3.5 xs:h-4 sm:h-5 md:h-6 lg:h-7 w-auto max-w-[65px] xs:max-w-[75px] sm:max-w-[120px] md:max-w-none object-contain transition-all duration-150 ${
+                          isActive
+                            ? '[filter:invert(43%)_sepia(85%)_saturate(1630%)_hue-rotate(352deg)_brightness(105%)] drop-shadow-[0_0_6px_rgba(200,90,23,0.7)]'
+                            : 'hover:[filter:invert(43%)_sepia(85%)_saturate(1630%)_hue-rotate(352deg)_brightness(105%)]'
+                        }`}
+                      />
                     </button>
                   );
                 })}
               </nav>
 
-              {/* Séparation et Lien Compte (affiche le prénom une fois connecté) */}
-              <div className="relative border-l-2 border-[#F4F1EA]/30 pl-4 sm:pl-6">
+              {/* Séparateur vertical fin */}
+              <span className="h-4 sm:h-6 w-[1.5px] bg-[#F4F1EA]/30 shrink-0" />
+
+              {/* Lien Compte sur la MÊME LIGNE HORIZONTALE */}
+              <div className="relative shrink-0">
                 {user ? (
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="px-3 py-1.5 border-2 border-[#C85A17] bg-[#C85A17]/20 font-display text-base sm:text-lg text-[#F4F1EA] hover:bg-[#C85A17] transition-colors cursor-pointer flex items-center gap-1.5"
+                      className="px-2 py-0.5 xs:px-2.5 xs:py-1 border border-[#C85A17] sm:border-2 bg-[#C85A17]/20 font-display text-[11px] xs:text-xs sm:text-base text-[#F4F1EA] hover:bg-[#C85A17] transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
                     >
-                      <span>{user.firstName}</span>
-                      <span className="text-xs text-[#C85A17] group-hover:text-white">▼</span>
+                      <span className="truncate max-w-[70px] xs:max-w-[90px]">{user.firstName}</span>
+                      <span className="text-[9px] text-[#C85A17] group-hover:text-white">▼</span>
                     </button>
 
                     {/* Menu déroulant brutaliste du compte */}
                     {userMenuOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-48 border-4 border-[#F4F1EA] bg-[#0c1c11] shadow-[6px_6px_0px_#C85A17] z-50 flex flex-col p-2 space-y-1">
+                      <div className="absolute right-0 top-full mt-2 w-48 sm:w-52 border-4 border-[#F4F1EA] bg-[#0c1c11] shadow-[6px_6px_0px_#C85A17] z-50 flex flex-col p-2 space-y-1">
                         <button
                           type="button"
-                          onClick={() => go('/compte/billets')}
-                          className="w-full text-left p-2.5 font-display text-sm text-[#F4F1EA] hover:bg-[#C85A17] transition-colors"
+                          onClick={() => go('/compte/mes-billets')}
+                          className="w-full text-left p-2 font-display text-xs sm:text-sm text-[#F4F1EA] hover:bg-[#C85A17] transition-colors cursor-pointer"
                         >
                           [ MES BILLETS ]
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => go('/admin')}
+                          className="w-full text-left p-2 font-display text-xs text-[#EAD9A4] hover:bg-[#C85A17] hover:text-white transition-colors cursor-pointer"
+                        >
+                          [ ESPACE ADMINISTRATION ]
                         </button>
                         <button
                           type="button"
@@ -147,7 +212,7 @@ function AppContent() {
                             await logout();
                             go('/');
                           }}
-                          className="w-full text-left p-2.5 font-display text-xs text-[#C85A17] hover:bg-[#C85A17] hover:text-[#F4F1EA] transition-colors"
+                          className="w-full text-left p-2 font-display text-xs text-[#C85A17] hover:bg-[#C85A17] hover:text-[#F4F1EA] transition-colors cursor-pointer"
                         >
                           [ DÉCONNEXION ]
                         </button>
@@ -158,14 +223,14 @@ function AppContent() {
                   <button
                     type="button"
                     onClick={() => go(`/compte/connexion?next=${encodeURIComponent(currentPath)}`)}
-                    className="font-display text-lg sm:text-xl text-[#F4F1EA]/80 hover:text-[#C85A17] uppercase cursor-pointer"
+                    className="font-display text-xs xs:text-sm sm:text-base md:text-lg text-[#F4F1EA]/90 hover:text-[#C85A17] uppercase cursor-pointer whitespace-nowrap px-1 py-0.5"
                   >
                     COMPTE
                   </button>
                 )}
               </div>
             </div>
-          </header>
+          </header>}
         )}
 
         {/* Transition entre pages avec AnimatePresence mode="wait" (0.2s) */}
@@ -213,7 +278,7 @@ function AppContent() {
             {currentPath === '/compte/connexion' && (
               <Login
                 go={go}
-                nextRoute={routeInfo.searchParams.get('next') || '/billets/commande'}
+                nextRoute={routeInfo.searchParams.get('next') || '/compte/mes-billets'}
               />
             )}
 
@@ -221,12 +286,25 @@ function AppContent() {
             {currentPath === '/compte/inscription' && (
               <Register
                 go={go}
-                nextRoute={routeInfo.searchParams.get('next') || '/billets/commande'}
+                nextRoute={routeInfo.searchParams.get('next') || '/compte/mes-billets'}
               />
             )}
 
-            {/* Espace Compte : Mes Billets */}
-            {currentPath === '/compte/billets' && <MyTickets go={go} />}
+            {/* Espace Compte : Mes Billets (Liste panoramique) */}
+            {isMyTickets && <MyTickets go={go} />}
+
+            {/* Espace Compte : Détail du Billet Numérique Stylisé */}
+            {isTicketDetail && <DigitalTicketDetail ticketRef={ticketRefParam} go={go} />}
+
+            {/* ========================================================
+                ESPACE D'ADMINISTRATION CENTRALISÉE ET RBAC (/admin/*)
+                ======================================================== */}
+            {currentPath === '/admin' && <AdminDashboard go={go} />}
+            {currentPath === '/admin/billetterie' && <AdminPasses go={go} />}
+            {currentPath === '/admin/commandes' && <AdminOrders go={go} />}
+            {currentPath === '/admin/controle-acces' && <AdminAccessControl go={go} />}
+            {currentPath === '/admin/finances' && <AdminFinances go={go} />}
+            {currentPath === '/admin/equipe' && <AdminTeam go={go} />}
           </motion.main>
         </AnimatePresence>
       </div>

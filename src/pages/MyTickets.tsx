@@ -4,10 +4,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TicketView } from '../components/TicketView.tsx';
-import { PurchasedTicket } from '../data.ts';
+import { DigitalTicket } from '../types/ticket.ts';
+import { ticketService } from '../services/ticketService.ts';
+import { PanoramicTicket } from '../components/PanoramicTicket.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
-import { api } from '../services/api.ts';
+import { ticketPdfService } from '../services/ticketPdfService.ts';
 
 interface MyTicketsProps {
   go: (route: string) => void;
@@ -15,23 +16,19 @@ interface MyTicketsProps {
 
 export const MyTickets: React.FC<MyTicketsProps> = ({ go }) => {
   const { user } = useAuth();
-  const [tickets, setTickets] = useState<PurchasedTicket[]>([]);
+  const [tickets, setTickets] = useState<DigitalTicket[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeQrModal, setActiveQrModal] = useState<{ url: string; ref: string } | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      // Redirection si l'utilisateur n'est pas connecté
-      go('/compte/connexion?next=/compte/billets');
-      return;
-    }
-
     let isMounted = true;
-    api
-      .getMyTickets(user.id)
-      .then((t) => {
+    setIsLoading(true);
+
+    ticketService
+      .getMyTickets(user?.id)
+      .then((data) => {
         if (isMounted) {
-          setTickets(t);
+          setTickets(data);
           setIsLoading(false);
         }
       })
@@ -42,42 +39,56 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ go }) => {
     return () => {
       isMounted = false;
     };
-  }, [user, go]);
+  }, [user]);
 
-  const handleDownload = (ticket: PurchasedTicket) => {
-    alert(`Téléchargement du pass officiel ${ticket.reference} (${ticket.holderName})...\nFormat PDF d'art prêt pour l'impression.`);
+  const handleDownload = async (ticket: DigitalTicket) => {
+    await ticketPdfService.downloadTicketPdf(ticket);
+  };
+
+  const handleViewDetail = (ticket: DigitalTicket) => {
+    go(`/compte/mes-billets/${ticket.reference}`);
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-8 max-w-5xl mx-auto select-none">
+    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-8 max-w-6xl mx-auto select-none pb-28">
       <div>
-        {/* Titre MES BILLETS */}
-        <div className="mb-8 sm:mb-12">
+        {/* Titre & Sous-titre officiel de la Page */}
+        <div className="mb-10 sm:mb-12">
           <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
-            ESPACE FESTIVALIER · {user ? `${user.firstName} ${user.lastName}` : ''}
+            ESPACE PERSONNEL · {user ? `${user.firstName} ${user.lastName}` : 'FESTIVALIER'}
           </span>
           <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
             MES BILLETS
           </h1>
+          <p className="font-body text-xs sm:text-sm text-[#F4F1EA]/70 mt-2 uppercase tracking-wide">
+            DÉFILEMENT VERTICAL · PASS OFFICIELS POUR LES 27 & 28 DÉCEMBRE 2026
+          </p>
         </div>
 
-        {/* État de chargement */}
+        {/* État 1 : Chargement */}
         {isLoading && (
-          <div className="border-4 border-[#F4F1EA] p-8 text-center bg-[#0c1c11]">
-            <span className="font-display text-xl text-[#C85A17] animate-pulse">
-              CHARGEMENT DE VOS TITRES D'ACCÈS...
-            </span>
+          <div className="space-y-12">
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-full aspect-[2.83/1] max-w-5xl mx-auto border-4 border-[#F4F1EA]/30 bg-[#0c1c11]/60 animate-pulse p-8 flex items-center justify-center"
+              >
+                <span className="font-display text-xl sm:text-2xl text-[#C85A17]">
+                  CHARGEMENT DU TITRE D'ACCÈS 0{i}...
+                </span>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Cas : Aucun billet pour l'instant */}
+        {/* État 2 : Aucun billet */}
         {!isLoading && tickets.length === 0 && (
-          <div className="border-4 border-[#F4F1EA] p-8 sm:p-14 text-center bg-[#0c1c11] space-y-6">
+          <div className="border-4 border-[#F4F1EA] p-10 sm:p-16 text-center bg-[#0c1c11] space-y-6 max-w-4xl mx-auto">
             <h2 className="font-display text-3xl sm:text-5xl text-[#F4F1EA]">
-              AUCUN BILLET POUR L'INSTANT
+              AUCUN BILLET ASSOCIÉ À CE COMPTE
             </h2>
             <p className="font-body text-sm sm:text-base text-[#F4F1EA]/80 max-w-md mx-auto">
-              Vous n'avez pas encore réservé de pass pour la 5ème édition de Mother Africa Festival 2026.
+              Vous n'avez pas encore réservé de pass officiel pour la 5ème édition de Mother Africa Festival 2026.
             </p>
             <div>
               <button
@@ -85,35 +96,34 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ go }) => {
                 onClick={() => go('/billets')}
                 className="brut-btn px-8 sm:px-12 py-4 text-xl sm:text-2xl"
               >
-                [ ACCÉDER À LA BILLETTERIE ]
+                [ ACHETER DES BILLETS ]
               </button>
             </div>
           </div>
         )}
 
-        {/* Cas : Liste des billets */}
+        {/* État 3 : Liste des Ensembles (Ticket Panoramique + Boutons d'Action)
+            RÈGLE D'AFFICHAGE VERTICAL :
+            Les ensembles s'empilent verticalement avec un grand espacement (gap-12).
+            Au chargement, on voit les deux premiers ensembles complets, et le haut du 3ème
+            ticket coupé par le bas de l'écran pour inciter intuitivement au scroll. */}
         {!isLoading && tickets.length > 0 && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between text-xs font-display text-[#F4F1EA]/70 uppercase">
-              <span>{tickets.length} TITRE{tickets.length > 1 ? 'S' : ''} D'ACCÈS ACTIF{tickets.length > 1 ? 'S' : ''}</span>
-              <span className="text-[#C85A17]">BRACELET RFID REMIS SUR PRÉSENTATION DU QR CODE</span>
-            </div>
-
-            <div className="space-y-8">
-              {tickets.map((ticket) => (
-                <TicketView
-                  key={ticket.reference}
+          <div className="flex flex-col space-y-12 sm:space-y-16">
+            {tickets.map((ticket) => (
+              <div key={ticket.reference} className="w-full">
+                <PanoramicTicket
                   ticket={ticket}
                   onShowQr={(url, ref) => setActiveQrModal({ url, ref })}
                   onDownload={handleDownload}
+                  onViewDetail={handleViewDetail}
                 />
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Modal QR Code plein écran sur fond crème */}
+      {/* Modal QR Code Plein Écran pour le Contrôle */}
       {activeQrModal && (
         <div
           role="dialog"
@@ -126,10 +136,10 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ go }) => {
             onClick={(e) => e.stopPropagation()}
             className="bg-[#F4F1EA] text-[#142B1A] border-4 border-[#C85A17] p-8 sm:p-12 text-center max-w-sm w-full shadow-[10px_10px_0px_#C85A17]"
           >
-            <span className="font-display text-xs tracking-widest text-[#C85A17] uppercase block mb-2">
-              SCAN ENTRÉE FESTIVAL
+            <span className="font-display text-xs tracking-widest text-[#C85A17] uppercase block mb-2 font-bold">
+              CONTRÔLE SCAN ENTRÉE
             </span>
-            <div className="p-4 bg-white border-2 border-[#142B1A] inline-block mb-4">
+            <div className="p-4 bg-white border-2 border-[#142B1A] inline-block mb-4 shadow-md">
               <img
                 src={activeQrModal.url}
                 alt="QR Code"
@@ -144,7 +154,7 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ go }) => {
               onClick={() => setActiveQrModal(null)}
               className="w-full py-3 bg-[#142B1A] text-[#F4F1EA] font-display text-base uppercase hover:bg-[#C85A17] transition-colors cursor-pointer"
             >
-              [ FERMER ]
+              [ FERMER LE SCAN ]
             </button>
           </div>
         </div>

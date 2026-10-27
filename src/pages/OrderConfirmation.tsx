@@ -4,11 +4,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { TicketView } from '../components/TicketView.tsx';
-import { PurchasedTicket, Order } from '../data.ts';
+import QRCode from 'qrcode';
+import { PurchasedTicket, Order, FACTS } from '../data.ts';
 import { useAuth } from '../context/AuthContext.tsx';
-import { api } from '../services/api.ts';
+import TicketTemplate from '../components/TicketTemplate.tsx';
+import { ticketPdfService } from '../services/ticketPdfService.ts';
+import { DigitalTicket } from '../types/ticket.ts';
 
 interface OrderConfirmationProps {
   go: (route: string) => void;
@@ -19,10 +20,10 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ go, orderI
   const { user } = useAuth();
   const [tickets, setTickets] = useState<PurchasedTicket[]>([]);
   const [order, setOrder] = useState<Order | null>(null);
+  const [qrCodeUrls, setQrCodeUrls] = useState<Record<string, string>>({});
   const [activeQrModal, setActiveQrModal] = useState<{ url: string; ref: string } | null>(null);
 
   useEffect(() => {
-    // Récupérer la dernière commande depuis le localStorage
     try {
       const raw = localStorage.getItem('maf_orders_v1');
       if (raw) {
@@ -31,6 +32,23 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ go, orderI
         if (targetOrder) {
           setOrder(targetOrder);
           setTickets(targetOrder.tickets);
+
+          // Génération des QR codes pour chaque billet
+          targetOrder.tickets.forEach(async (t: PurchasedTicket) => {
+            try {
+              const url = await QRCode.toDataURL(`MAF26://${t.reference}:${targetOrder.id}`, {
+                width: 280,
+                margin: 1,
+                color: {
+                  dark: '#0D1E13',
+                  light: '#FFFFFF'
+                }
+              });
+              setQrCodeUrls((prev) => ({ ...prev, [t.reference]: url }));
+            } catch {
+              // noop
+            }
+          });
         }
       }
     } catch (err) {
@@ -38,89 +56,122 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ go, orderI
     }
   }, [orderId]);
 
-  const handleDownload = (ticket: PurchasedTicket) => {
-    // Simulation de téléchargement du billet
-    alert(`Téléchargement du billet ${ticket.reference} (${ticket.holderName})...\nFormat PDF d'art prêt pour l'impression.`);
+  const handleDownloadPdf = (ticket: PurchasedTicket, index: number) => {
+    const digitalTicket: DigitalTicket = {
+      id: `tkt_${ticket.reference}`,
+      reference: ticket.reference,
+      orderId: order?.id || 'ORD-2026',
+      ticketNumber: `N° ${String(index + 1).padStart(4, '0')}`,
+      categoryId: ticket.categoryId,
+      categoryName: ticket.category,
+      holderName: ticket.holderName,
+      price: ticket.price,
+      numericPrice: ticket.numericPrice,
+      status: 'CONFIRMED',
+      secureToken: `maf26_sec_${ticket.reference}`,
+      purchaseDate: ticket.purchaseDate,
+      eventDates: ticket.eventDates || FACTS.dates,
+      location: ticket.location || `${FACTS.lieu}, ABIDJAN`,
+      gateInfo:
+        ticket.categoryId === 'vip-debout'
+          ? 'PORTE VIP NORD - ESPACE SCÈNE PRIVILÈGE'
+          : 'PORTE SUD - ENTRÉE PRINCIPALE',
+      doorOpeningTime: ticket.categoryId === 'vip-debout' ? '15:30 GMT' : '16:00 GMT'
+    };
+
+    ticketPdfService.downloadTicketPdf(digitalTicket);
   };
 
   return (
     <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-8 max-w-5xl mx-auto select-none">
       <div>
         {/* Titre géant : C'EST FAIT. */}
-        <div className="mb-10 sm:mb-12">
+        <div className="mb-8 sm:mb-12">
           <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
-            COMMANDE CONFIRMÉE · {order ? `#${order.id}` : ''}
+            COMMANDE CONFIRMÉE {order ? `· #${order.id}` : ''}
           </span>
           <h1 className="font-display text-6xl sm:text-8xl md:text-9xl text-[#F4F1EA] leading-none">
             C'EST FAIT.
           </h1>
-          <p className="font-body text-base sm:text-xl text-[#F4F1EA]/90 mt-4 max-w-2xl leading-relaxed">
-            Vos billets ont aussi été envoyés par email à{' '}
-            <strong className="text-[#C85A17]">{user?.email || order?.userEmail || 'votre adresse email'}</strong>.
+          <p className="font-body text-sm sm:text-lg text-[#F4F1EA]/90 mt-3 max-w-2xl leading-relaxed">
+            Vos billets officiels ont été générés avec succès et transmis à{' '}
+            <strong className="text-[#C85A17]">
+              {user?.email || order?.userEmail || 'votre adresse email'}
+            </strong>
+            .
           </p>
         </div>
 
-        {/* Animation à la confirmation : billets en cascade avec rotation qui se redresse */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.15
-              }
-            }
-          }}
-          className="space-y-8"
-        >
-          {tickets.map((ticket) => (
-            <motion.div
-              key={ticket.reference}
-              variants={{
-                hidden: { opacity: 0, y: 50, rotate: -3 },
-                visible: {
-                  opacity: 1,
-                  y: 0,
-                  rotate: 0,
-                  transition: {
-                    duration: 0.45,
-                    ease: [0.16, 1, 0.3, 1]
-                  }
-                }
-              }}
-            >
-              <TicketView
-                ticket={ticket}
-                onShowQr={(url, ref) => setActiveQrModal({ url, ref })}
-                onDownload={handleDownload}
-              />
-            </motion.div>
-          ))}
-        </motion.div>
+        {/* AFFICHAGE DIRECT DU TEMPLATE OFFICIEL DU BILLET SUR LA PAGE DE CONFIRMATION */}
+        <div className="space-y-12 sm:space-y-16">
+          {tickets.map((ticket, index) => {
+            const ticketNum = `N° ${String(index + 1).padStart(4, '0')}`;
+            const qrUrl = qrCodeUrls[ticket.reference] || '';
 
-        {/* Bouton Voir mes Billets */}
-        <div className="mt-12 pt-8 border-t-2 border-[#F4F1EA]/25 flex flex-col sm:flex-row items-center justify-between gap-4">
+            return (
+              <div key={ticket.reference} className="w-full">
+                {/* 1. Le Ticket Template sans arrière-plan blanc */}
+                <TicketTemplate
+                  category={ticket.category}
+                  ticketNumber={ticketNum}
+                  buyerName={ticket.holderName}
+                  artistName="DAVIDO"
+                  artistSubtitle="& GUESTS"
+                  artistImage="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80"
+                  qrCodeUrl={qrUrl}
+                  eventDates={ticket.eventDates || FACTS.dates}
+                  location={ticket.location || 'MARCORY ZONE 4'}
+                  price={ticket.price}
+                  statusText="✓ CONFIRMÉ - VALIDE"
+                  statusColor="text-[#22c55e]"
+                  onShowQr={() => setActiveQrModal({ url: qrUrl, ref: ticket.reference })}
+                />
+
+                {/* 2. Boutons d'action placés directement sous le ticket */}
+                <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4 mt-4 w-full">
+                  <button
+                    type="button"
+                    onClick={() => go(`/compte/mes-billets/${ticket.reference}`)}
+                    className="brut-btn py-3 px-6 sm:py-3.5 sm:px-8 text-sm sm:text-base"
+                  >
+                    [ VOIR MON BILLET ]
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPdf(ticket, index)}
+                    className="py-3 px-6 sm:py-3.5 sm:px-8 border-2 border-[#F4F1EA] font-display text-sm sm:text-base text-[#F4F1EA] hover:border-[#C85A17] hover:text-[#C85A17] hover:bg-[#C85A17]/10 transition-colors uppercase cursor-pointer flex items-center gap-2"
+                  >
+                    <span>↓</span>
+                    <span>[ TÉLÉCHARGER LE PDF ]</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bouton Voir mes Billets & Retour */}
+        <div className="mt-14 pt-8 border-t-2 border-[#F4F1EA]/25 flex flex-col sm:flex-row items-center justify-between gap-6">
           <button
             type="button"
-            onClick={() => go('/compte/billets')}
-            className="w-full sm:w-auto brut-btn px-8 sm:px-12 py-4 text-xl sm:text-2xl"
+            onClick={() => go('/compte/mes-billets')}
+            className="w-full sm:w-auto brut-btn px-10 sm:px-14 py-4 text-xl sm:text-2xl"
           >
-            [ VOIR MES BILLETS ]
+            [ ACCÉDER À MES BILLETS ]
           </button>
 
           <button
             type="button"
             onClick={() => go('/')}
-            className="font-display text-sm text-[#F4F1EA]/70 hover:text-[#C85A17] uppercase"
+            className="font-display text-base text-[#F4F1EA]/70 hover:text-[#C85A17] uppercase"
           >
             RETOURNER À L'ACCUEIL →
           </button>
         </div>
       </div>
 
-      {/* Modal QR Code plein écran sur fond crème */}
+      {/* Modal QR Code Plein Écran */}
       {activeQrModal && (
         <div
           role="dialog"
@@ -131,25 +182,25 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ go, orderI
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#F4F1EA] text-[#142B1A] border-4 border-[#C85A17] p-8 sm:p-12 text-center max-w-sm w-full shadow-[10px_10px_0px_#C85A17]"
+            className="bg-[#0D1E13] text-[#F4F1EA] border-4 border-[#C85A17] p-8 sm:p-10 text-center max-w-sm w-full shadow-[10px_10px_0px_#C85A17]"
           >
-            <span className="font-display text-xs tracking-widest text-[#C85A17] uppercase block mb-2">
-              SCAN ENTRÉE FESTIVAL
+            <span className="font-display text-xs tracking-widest text-[#C85A17] uppercase block mb-2 font-bold">
+              SCAN ENTRÉE FESTIVAL 2026
             </span>
-            <div className="p-4 bg-white border-2 border-[#142B1A] inline-block mb-4">
+            <div className="p-3 bg-white border-2 border-[#142B1A] inline-block mb-3 shadow-md rounded-lg">
               <img
                 src={activeQrModal.url}
                 alt="QR Code"
                 className="w-56 h-56 sm:w-64 sm:h-64 object-contain"
               />
             </div>
-            <div className="font-mono font-bold text-lg text-[#142B1A] tracking-wider mb-6">
-              {activeQrModal.ref}
+            <div className="font-mono font-bold text-lg text-[#F4F1EA] tracking-wider mb-6">
+              #{activeQrModal.ref}
             </div>
             <button
               type="button"
               onClick={() => setActiveQrModal(null)}
-              className="w-full py-3 bg-[#142B1A] text-[#F4F1EA] font-display text-base uppercase hover:bg-[#C85A17] transition-colors cursor-pointer"
+              className="w-full py-3 bg-[#C85A17] text-[#F4F1EA] font-display text-base uppercase hover:bg-[#F4F1EA] hover:text-[#142B1A] transition-colors cursor-pointer"
             >
               [ FERMER ]
             </button>

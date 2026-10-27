@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { TICKETS, CONFIG, PAYMENT_METHODS, formatFCFA } from '../data.ts';
+import { TICKETS, CONFIG, PAYMENT_METHODS, formatFCFA, Ticket } from '../data.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useCart } from '../context/CartContext.tsx';
 import { api } from '../services/api.ts';
@@ -18,14 +18,13 @@ interface OrderCheckoutProps {
 export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderCompleted }) => {
   const { user, isLoading: authLoading } = useAuth();
   const {
-    categoryId,
-    selectCategory,
-    quantity,
-    incrementQuantity,
-    decrementQuantity,
+    items,
+    addCategory,
+    removeCategory,
+    incrementCategory,
+    decrementCategory,
     totalPrice,
-    unitPrice,
-    categoryName,
+    totalQuantity,
     holderNames,
     setHolderName,
     clearCart
@@ -37,15 +36,16 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
+  // Modal ou panneau de sélection d'une autre catégorie
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState<boolean>(false);
+
   // Redirection automatique à l'étape 2 si non connecté
   useEffect(() => {
     if (step === 2) {
       if (!authLoading) {
         if (user) {
-          // L'utilisateur est connecté : avance automatiquement au Récap
           setStep(3);
         } else {
-          // Redirige vers la connexion avec le paramètre de retour
           go('/compte/connexion?next=/billets/commande');
         }
       }
@@ -83,7 +83,6 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
     setPaymentError(null);
 
     try {
-      // 1. Simuler l'appel de paiement
       const paymentRes = await api.pay({
         orderId: `temp_${Date.now()}`,
         paymentMethod: selectedPaymentMethod,
@@ -94,26 +93,30 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
         throw new Error('La transaction a été refusée par la passerelle de paiement.');
       }
 
-      // 2. Créer la commande officielle et les billets unitaires
+      // Préparation des articles pour la commande
+      const orderItems = items.map((it) => {
+        const ticketInfo = TICKETS.find((t) => t.id === it.categoryId) || TICKETS[0];
+        return {
+          categoryId: it.categoryId,
+          categoryName: ticketInfo.name,
+          quantity: it.quantity,
+          unitPrice: ticketInfo.numericPrice
+        };
+      });
+
       const finalOrder = await api.createOrder({
         user,
-        categoryId,
-        categoryName,
-        quantity,
-        unitPrice,
+        items: orderItems,
         holderNames,
         paymentMethod: selectedPaymentMethod
       });
 
-      // 3. Simuler l'envoi du mail pour le premier billet
       if (finalOrder.tickets.length > 0) {
         api.sendTicketEmail(finalOrder.tickets[0], '', user.email);
       }
 
-      // 4. Vider le panier
       clearCart();
 
-      // 5. Notifier l'application et rediriger vers la confirmation
       if (onOrderCompleted) {
         onOrderCompleted(finalOrder.id);
       }
@@ -125,12 +128,17 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
     }
   };
 
+  // Catégories non encore présentes dans la commande
+  const availableCategoriesToAdd = TICKETS.filter(
+    (ticket) => !items.some((it) => it.categoryId === ticket.id)
+  );
+
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-6 select-none max-w-5xl mx-auto pb-24 md:pb-12">
+    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-8 select-none max-w-5xl mx-auto pb-28 md:pb-16">
       <div>
         {/* 1. Indicateur d'étapes brutaliste */}
-        <div className="mb-10 overflow-x-auto pb-2">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-max">
+        <div className="mb-12 overflow-x-auto pb-2">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-max">
             {stepsList.map((s) => {
               const isCurrent = step === s.num;
               const isPast = step > s.num;
@@ -138,7 +146,7 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
               return (
                 <div
                   key={s.num}
-                  className={`border-4 px-3 sm:px-5 py-2 sm:py-2.5 font-display text-xs sm:text-base tracking-wider uppercase transition-all ${
+                  className={`border-4 px-4 sm:px-6 py-2.5 font-display text-xs sm:text-base tracking-wider uppercase transition-all ${
                     isCurrent
                       ? 'bg-[#C85A17] text-[#F4F1EA] border-[#C85A17]'
                       : isPast
@@ -153,9 +161,9 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
           </div>
         </div>
 
-        {/* 2. Contenu de l'étape animée (AnimatePresence mode="wait", slide 40px, 0.25s) */}
+        {/* 2. Contenu de l'étape animée */}
         <AnimatePresence mode="wait">
-          {/* ÉTAPE 1 : CHOIX DU BILLET ET QUANTITÉ */}
+          {/* ÉTAPE 1 : FOCUS UNIQUE SUR LE BILLET CHOISI & AJOUT POSSIBLE */}
           {step === 1 && (
             <motion.div
               key="step-1"
@@ -163,10 +171,10 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -40 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="space-y-8"
+              className="space-y-10"
             >
               <div>
-                <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
+                <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-2">
                   ÉTAPE 01 / SÉLECTION
                 </span>
                 <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
@@ -177,105 +185,214 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                 </p>
               </div>
 
-              {/* Sélection de la catégorie */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-                {TICKETS.map((t) => {
-                  const isSelected = categoryId === t.id;
+              {/* LISTE DES BILLETS SÉLECTIONNÉS (Focus unique avec grand encadré terracotta) */}
+              <div className="space-y-8">
+                {items.map((cartItem) => {
+                  const ticket: Ticket =
+                    TICKETS.find((t) => t.id === cartItem.categoryId) || TICKETS[0];
+                  const itemSubtotal = ticket.numericPrice * cartItem.quantity;
+
                   return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => selectCategory(t.id)}
-                      className={`border-4 p-6 sm:p-8 text-left transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'border-[#C85A17] bg-[#C85A17]/25 shadow-[6px_6px_0px_#C85A17]'
-                          : 'border-[#F4F1EA] bg-[#142B1A]/80 hover:border-[#C85A17]'
-                      }`}
+                    <div
+                      key={ticket.id}
+                      className="border-4 border-[#C85A17] bg-[#C85A17]/10 p-6 sm:p-10 shadow-[8px_8px_0px_#C85A17] space-y-8"
                     >
-                      <span className="font-display text-xs sm:text-sm text-[#C85A17] block uppercase mb-1">
-                        {isSelected ? '✓ SÉLECTIONNÉ' : '[ SÉLECTIONNER ]'}
-                      </span>
-                      <h2 className="font-display text-3xl sm:text-5xl text-[#F4F1EA] leading-tight">
-                        {t.name}
-                      </h2>
-                      <div className="font-display text-2xl sm:text-4xl text-[#C85A17] mt-1">
-                        {t.price}
+                      {/* Entête du billet sélectionné */}
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b-2 border-[#C85A17]/40 pb-6">
+                        <div>
+                          <span className="bg-[#C85A17] text-[#F4F1EA] px-3 py-1 font-display text-xs sm:text-sm tracking-wider uppercase inline-block mb-3">
+                            ✓ BILLET SÉLECTIONNÉ
+                          </span>
+                          <h2 className="font-display text-4xl sm:text-6xl text-[#F4F1EA] leading-none">
+                            {ticket.name}
+                          </h2>
+                          <p className="font-body text-xs sm:text-sm text-[#F4F1EA]/80 mt-2 uppercase tracking-wide">
+                            {ticket.perks}
+                          </p>
+                        </div>
+
+                        <div className="sm:text-right">
+                          <span className="font-display text-xs text-[#F4F1EA]/60 uppercase block">
+                            PRIX UNITAIRE
+                          </span>
+                          <span className="font-display text-3xl sm:text-5xl text-[#C85A17]">
+                            {ticket.price}
+                          </span>
+                        </div>
                       </div>
-                      <p className="font-body text-xs text-[#F4F1EA]/80 mt-3 uppercase">
-                        {t.perks}
-                      </p>
-                    </button>
+
+                      {/* Sélecteur de Quantité avec boutons [-] et [+] parfaitement cadrés et espacés */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pt-2">
+                        <div>
+                          <span className="font-display text-lg sm:text-2xl text-[#F4F1EA] uppercase block">
+                            QUANTITÉ DE BILLETS
+                          </span>
+                          <span className="font-body text-xs text-[#F4F1EA]/70 mt-1 block">
+                            Limite fixée à {CONFIG.MAX_PER_ORDER} billets maximum par commande.
+                          </span>
+                        </div>
+
+                        {/* Boutons Moins et Plus géants avec cadrage SVG géométrique parfait */}
+                        <div className="flex items-center gap-6">
+                          {/* Bouton Moins */}
+                          <button
+                            type="button"
+                            onClick={() => decrementCategory(ticket.id)}
+                            disabled={cartItem.quantity <= 1}
+                            aria-label={`Diminuer la quantité de billets ${ticket.name}`}
+                            className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-[#F4F1EA] flex items-center justify-center text-[#F4F1EA] hover:bg-[#C85A17] hover:border-[#C85A17] disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
+                          >
+                            <svg
+                              className="w-7 h-7 sm:w-8 sm:h-8"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              strokeLinecap="square"
+                            >
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                          </button>
+
+                          {/* Quantité centrale */}
+                          <div className="w-16 sm:w-20 text-center font-display text-4xl sm:text-6xl text-[#F4F1EA] leading-none">
+                            {cartItem.quantity}
+                          </div>
+
+                          {/* Bouton Plus */}
+                          <button
+                            type="button"
+                            onClick={() => incrementCategory(ticket.id)}
+                            disabled={cartItem.quantity >= CONFIG.MAX_PER_ORDER}
+                            aria-label={`Augmenter la quantité de billets ${ticket.name}`}
+                            className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-[#F4F1EA] flex items-center justify-center text-[#F4F1EA] hover:bg-[#C85A17] hover:border-[#C85A17] disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
+                          >
+                            <svg
+                              className="w-7 h-7 sm:w-8 sm:h-8"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              strokeLinecap="square"
+                            >
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sous-total de ce billet & option de retrait si multi-billets */}
+                      <div className="pt-6 border-t border-[#F4F1EA]/20 flex flex-wrap items-baseline justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <span className="font-display text-xs sm:text-sm text-[#F4F1EA]/70 uppercase">
+                            SOUS-TOTAL ESTIMÉ :
+                          </span>
+                          <span className="font-display text-2xl sm:text-4xl text-[#C85A17]">
+                            {formatFCFA(itemSubtotal)}
+                          </span>
+                        </div>
+
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeCategory(ticket.id)}
+                            className="font-display text-xs text-red-400 hover:text-red-300 uppercase tracking-wider cursor-pointer"
+                          >
+                            [ RETIRER CE BILLET ]
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
 
-              {/* Sélecteur de Quantité avec boutons géants [ – ] et [ + ] */}
-              <div className="border-4 border-[#F4F1EA] p-6 sm:p-8 bg-[#0c1c11]">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                  <div>
-                    <label htmlFor="qty-controls" className="font-display text-lg sm:text-2xl text-[#F4F1EA] block uppercase">
-                      QUANTITÉ DE BILLETS
-                    </label>
-                    <span className="font-body text-xs text-[#F4F1EA]/70 block mt-1">
-                      Limite fixée à {CONFIG.MAX_PER_ORDER} billets maximum par commande.
-                    </span>
-                  </div>
-
-                  <div id="qty-controls" className="flex items-center gap-4">
+              {/* BOUTON SECONDAIRE AÉRÉ POUR AJOUTER UNE AUTRE CATÉGORIE */}
+              {availableCategoriesToAdd.length > 0 && (
+                <div className="pt-4">
+                  {!showAddCategoryModal ? (
                     <button
                       type="button"
-                      onClick={decrementQuantity}
-                      disabled={quantity <= 1}
-                      aria-label="Diminuer la quantité"
-                      className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-[#F4F1EA] font-display text-3xl sm:text-5xl text-[#F4F1EA] hover:bg-[#C85A17] hover:border-[#C85A17] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer"
+                      onClick={() => setShowAddCategoryModal(true)}
+                      className="w-full py-5 border-4 border-dashed border-[#F4F1EA]/50 font-display text-base sm:text-xl text-[#F4F1EA] hover:border-[#C85A17] hover:text-[#C85A17] hover:bg-[#C85A17]/10 transition-colors uppercase cursor-pointer"
                     >
-                      [ – ]
+                      [ + AJOUTER UNE AUTRE CATÉGORIE DE BILLET ]
                     </button>
+                  ) : (
+                    <div className="border-4 border-[#F4F1EA] p-6 bg-[#0c1c11] space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-display text-sm text-[#C85A17] uppercase">
+                          CHOISIR UNE CATÉGORIE À AJOUTER :
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCategoryModal(false)}
+                          className="font-display text-xs text-[#F4F1EA]/70 hover:text-[#C85A17] uppercase"
+                        >
+                          [ ANNULER ]
+                        </button>
+                      </div>
 
-                    <div className="w-16 sm:w-24 text-center font-display text-4xl sm:text-6xl text-[#F4F1EA]">
-                      {quantity}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {availableCategoriesToAdd.map((otherTicket) => (
+                          <button
+                            key={otherTicket.id}
+                            type="button"
+                            onClick={() => {
+                              addCategory(otherTicket.id);
+                              setShowAddCategoryModal(false);
+                            }}
+                            className="p-5 border-2 border-[#F4F1EA] text-left hover:border-[#C85A17] hover:bg-[#C85A17]/20 transition-colors cursor-pointer"
+                          >
+                            <span className="font-display text-2xl text-[#F4F1EA] block">
+                              {otherTicket.name}
+                            </span>
+                            <span className="font-display text-xl text-[#C85A17] mt-1 block">
+                              {otherTicket.price}
+                            </span>
+                            <span className="font-body text-xs text-[#F4F1EA]/70 mt-2 block uppercase">
+                              {otherTicket.perks}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={incrementQuantity}
-                      disabled={quantity >= CONFIG.MAX_PER_ORDER}
-                      aria-label="Augmenter la quantité"
-                      className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-[#F4F1EA] font-display text-3xl sm:text-5xl text-[#F4F1EA] hover:bg-[#C85A17] hover:border-[#C85A17] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center justify-center cursor-pointer"
-                    >
-                      [ + ]
-                    </button>
-                  </div>
+                  )}
                 </div>
+              )}
 
-                {/* Total de l'étape */}
-                <div className="mt-8 pt-6 border-t-2 border-[#F4F1EA]/20 flex items-baseline justify-between">
-                  <span className="font-display text-xs sm:text-base text-[#F4F1EA]/70 uppercase">
-                    SOUS-TOTAL ESTIMÉ ({quantity}x {categoryName}) :
+              {/* GRAND ESPACE VIDE DE RESPIRATION AVANT LES BOUTONS FINAUX */}
+              <div className="my-14 sm:my-20 border-b border-[#F4F1EA]/20" />
+
+              {/* RECAP RAPIDE & ACTIONS */}
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
+                  <span className="font-display text-base sm:text-xl text-[#F4F1EA]/80 uppercase">
+                    TOTAL ESTIMÉ ({totalQuantity} BILLET{totalQuantity > 1 ? 'S' : ''}) :
                   </span>
-                  <span className="font-display text-3xl sm:text-5xl text-[#C85A17]">
+                  <span className="font-display text-4xl sm:text-6xl text-[#C85A17]">
                     {formatFCFA(totalPrice)}
                   </span>
                 </div>
-              </div>
 
-              {/* Navigation étape */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => go('/billets')}
-                  className="font-display text-base text-[#F4F1EA]/70 hover:text-[#C85A17] uppercase cursor-pointer"
-                >
-                  [ RETOUR AUX TARIFS ]
-                </button>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => go('/billets')}
+                    className="font-display text-base text-[#F4F1EA]/70 hover:text-[#C85A17] uppercase cursor-pointer"
+                  >
+                    [ RETOUR AUX TARIFS ]
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleNextFromStep1}
-                  className="w-full sm:w-auto brut-btn px-8 sm:px-12 py-4 text-xl sm:text-2xl"
-                >
-                  CONTINUER VERS L'IDENTIFICATION →
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleNextFromStep1}
+                    className="w-full sm:w-auto brut-btn px-10 sm:px-14 py-5 text-xl sm:text-2xl"
+                  >
+                    CONTINUER VERS L'IDENTIFICATION →
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -288,10 +405,10 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -40 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="space-y-8"
+              className="space-y-10"
             >
               <div>
-                <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
+                <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-2">
                   ÉTAPE 03 / VÉRIFICATION
                 </span>
                 <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
@@ -299,33 +416,44 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                 </h1>
               </div>
 
-              {/* Lignes en gros caractères */}
+              {/* Lignes du récapitulatif */}
               <div className="border-4 border-[#F4F1EA] p-6 sm:p-10 bg-[#0c1c11] space-y-6">
-                <div className="border-b-2 border-[#F4F1EA]/20 pb-4 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-                  <span className="font-display text-sm text-[#F4F1EA]/60 uppercase">CATÉGORIE</span>
-                  <span className="font-display text-2xl sm:text-4xl text-[#F4F1EA]">{categoryName}</span>
-                </div>
+                {items.map((cartItem) => {
+                  const t = TICKETS.find((tk) => tk.id === cartItem.categoryId) || TICKETS[0];
+                  return (
+                    <div
+                      key={t.id}
+                      className="border-b-2 border-[#F4F1EA]/20 pb-4 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2"
+                    >
+                      <div>
+                        <span className="font-display text-2xl sm:text-4xl text-[#F4F1EA] block">
+                          {cartItem.quantity}x {t.name}
+                        </span>
+                        <span className="font-body text-xs text-[#F4F1EA]/60 uppercase">
+                          {t.price} / unité
+                        </span>
+                      </div>
+                      <span className="font-display text-2xl sm:text-4xl text-[#C85A17]">
+                        {formatFCFA(t.numericPrice * cartItem.quantity)}
+                      </span>
+                    </div>
+                  );
+                })}
 
-                <div className="border-b-2 border-[#F4F1EA]/20 pb-4 flex items-baseline justify-between">
-                  <span className="font-display text-sm text-[#F4F1EA]/60 uppercase">QUANTITÉ</span>
-                  <span className="font-display text-2xl sm:text-4xl text-[#F4F1EA]">{quantity} BILLET{quantity > 1 ? 'S' : ''}</span>
-                </div>
-
-                <div className="border-b-2 border-[#F4F1EA]/20 pb-4 flex items-baseline justify-between">
-                  <span className="font-display text-sm text-[#F4F1EA]/60 uppercase">PRIX UNITAIRE</span>
-                  <span className="font-display text-2xl sm:text-4xl text-[#F4F1EA]">{formatFCFA(unitPrice)}</span>
-                </div>
-
-                <div className="pt-2 flex items-baseline justify-between">
-                  <span className="font-display text-base sm:text-xl text-[#C85A17] uppercase">TOTAL À PAYER</span>
-                  <span className="font-display text-4xl sm:text-6xl text-[#C85A17]">{formatFCFA(totalPrice)}</span>
+                <div className="pt-4 flex items-baseline justify-between">
+                  <span className="font-display text-base sm:text-xl text-[#C85A17] uppercase">
+                    TOTAL À PAYER
+                  </span>
+                  <span className="font-display text-4xl sm:text-6xl text-[#C85A17]">
+                    {formatFCFA(totalPrice)}
+                  </span>
                 </div>
               </div>
 
-              {/* Option ASK_HOLDER_NAMES : Un champ par billet */}
+              {/* Noms des porteurs */}
               {CONFIG.ASK_HOLDER_NAMES && (
-                <div className="border-4 border-[#F4F1EA] p-6 sm:p-8 bg-[#142B1A]/80">
-                  <div className="mb-4">
+                <div className="border-4 border-[#F4F1EA] p-6 sm:p-8 bg-[#142B1A]/80 space-y-6">
+                  <div>
                     <h2 className="font-display text-xl sm:text-2xl text-[#F4F1EA] uppercase">
                       NOMS DES PORTEURS DES BILLETS
                     </h2>
@@ -335,13 +463,13 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                   </div>
 
                   <div className="space-y-4">
-                    {Array.from({ length: quantity }).map((_, index) => (
+                    {Array.from({ length: totalQuantity }).map((_, index) => (
                       <div key={index}>
                         <label
                           htmlFor={`holder-name-${index}`}
                           className="font-display text-sm text-[#F4F1EA] uppercase block mb-1"
                         >
-                          BILLET 0{index + 1} · NOM COMPLET
+                          BILLET 0{index + 1} · NOM COMPLET DU TITULAIRE
                         </label>
                         <input
                           id={`holder-name-${index}`}
@@ -361,20 +489,22 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                 </div>
               )}
 
-              {/* Navigation étape */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+              {/* Grand espace de respiration avant boutons */}
+              <div className="my-10 border-b border-[#F4F1EA]/20" />
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-2">
                 <button
                   type="button"
                   onClick={() => setStep(1)}
                   className="font-display text-base text-[#F4F1EA]/70 hover:text-[#C85A17] uppercase cursor-pointer"
                 >
-                  [ RETOUR À LA QUANTITÉ ]
+                  [ RETOUR À LA SÉLECTION ]
                 </button>
 
                 <button
                   type="button"
                   onClick={handleNextFromStep3}
-                  className="w-full sm:w-auto brut-btn px-8 sm:px-12 py-4 text-xl sm:text-2xl"
+                  className="w-full sm:w-auto brut-btn px-10 sm:px-14 py-5 text-xl sm:text-2xl"
                 >
                   VALIDER ET PASSER AU PAIEMENT →
                 </button>
@@ -390,26 +520,29 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -40 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="space-y-8"
+              className="space-y-10"
             >
               <div>
-                <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
+                <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-2">
                   ÉTAPE 04 / RÈGLEMENT SÉCURISÉ
                 </span>
                 <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
                   PAIEMENT
                 </h1>
                 <p className="font-body text-sm text-[#F4F1EA]/80 mt-2">
-                  Montant net à débiter : <strong className="text-[#C85A17] font-display text-xl sm:text-2xl">{formatFCFA(totalPrice)}</strong>
+                  Montant net à débiter :{' '}
+                  <strong className="text-[#C85A17] font-display text-xl sm:text-2xl">
+                    {formatFCFA(totalPrice)}
+                  </strong>
                 </p>
               </div>
 
-              {/* Choix de la méthode parmi PAYMENT_METHODS */}
-              <div className="space-y-3">
-                <span className="font-display text-sm text-[#F4F1EA] uppercase block mb-2">
-                  SÉLECTIONNEZ VOTRE MOYEN DE RÈGLEMENT :
+              <div className="space-y-4">
+                <span className="font-display text-xs sm:text-sm text-[#F4F1EA] uppercase block">
+                  SÉLECTIONNEZ VOTRE OPÉRATEUR DE PAIEMENT :
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Alignement strict sur une seule ligne (4 colonnes) avec typographie ajustée pour mobile */}
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-3 w-full">
                   {PAYMENT_METHODS.map((pm) => {
                     const isSelected = selectedPaymentMethod === pm.id;
                     return (
@@ -417,40 +550,40 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                         key={pm.id}
                         type="button"
                         onClick={() => setSelectedPaymentMethod(pm.id)}
-                        className={`border-4 p-5 text-left transition-colors cursor-pointer flex flex-col justify-between ${
+                        className={`border-2 sm:border-4 py-2 sm:py-4 px-1 sm:px-3 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[64px] sm:min-h-[85px] ${
                           isSelected
-                            ? 'border-[#C85A17] bg-[#C85A17]/25 shadow-[4px_4px_0px_#C85A17]'
+                            ? 'border-[#C85A17] bg-[#C85A17]/30 shadow-[2px_2px_0px_#C85A17] sm:shadow-[4px_4px_0px_#C85A17]'
                             : 'border-[#F4F1EA] bg-[#0c1c11] hover:border-[#C85A17]'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-display text-2xl sm:text-3xl text-[#F4F1EA]">
-                            {pm.name}
+                        <span className="font-display text-xs sm:text-base md:text-xl text-[#F4F1EA] tracking-wide truncate w-full block">
+                          {pm.name}
+                        </span>
+                        {pm.badge ? (
+                          <span className="text-[7px] sm:text-[9px] font-display bg-[#C85A17] text-[#F4F1EA] px-1 py-0.2 sm:py-0.5 uppercase tracking-wider mt-1 rounded-xs truncate max-w-full">
+                            {pm.badge}
                           </span>
-                          {pm.badge && (
-                            <span className="text-[10px] font-display bg-[#C85A17] text-[#F4F1EA] px-2 py-0.5 uppercase tracking-wider">
-                              {pm.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p className="font-body text-xs text-[#F4F1EA]/70 mt-2">
-                          {pm.description}
-                        </p>
+                        ) : (
+                          <span className="text-[7px] sm:text-[9px] font-mono text-[#F4F1EA]/60 uppercase tracking-tighter mt-1 truncate max-w-full">
+                            MOBILE
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Message d'erreur de paiement */}
               {paymentError && (
-                <div role="alert" className="p-4 border-2 border-[#C85A17] bg-[#C85A17]/20 text-sm font-body text-[#F4F1EA]">
+                <div
+                  role="alert"
+                  className="p-4 border-2 border-[#C85A17] bg-[#C85A17]/20 text-sm font-body text-[#F4F1EA]"
+                >
                   <strong className="block font-display text-base mb-1">ÉCHEC DE LA TRANSACTION :</strong>
                   {paymentError}
                 </div>
               )}
 
-              {/* Animation pendant le traitement du paiement : barre de vagues terracotta qui défile */}
               {isProcessingPayment && (
                 <div className="border-4 border-[#C85A17] p-8 bg-[#0c1c11] text-center space-y-4">
                   <h3 className="font-display text-2xl sm:text-3xl text-[#F4F1EA]">
@@ -459,7 +592,6 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                   <p className="font-body text-xs sm:text-sm text-[#F4F1EA]/80">
                     Veuillez ne pas rafraîchir la page pendant la confirmation auprès de votre opérateur.
                   </p>
-                  {/* Barre animée avec ondes terracotta défilantes */}
                   <div className="relative h-6 w-full max-w-md mx-auto border-2 border-[#F4F1EA] overflow-hidden bg-[#142B1A]">
                     <div className="absolute inset-0 bg-[#C85A17] animate-pulse opacity-80" />
                     <div
@@ -473,8 +605,10 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                 </div>
               )}
 
-              {/* Actions de l'étape 4 */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+              {/* Grand espace avant actions */}
+              <div className="my-10 border-b border-[#F4F1EA]/20" />
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-2">
                 <button
                   type="button"
                   disabled={isProcessingPayment}
@@ -489,7 +623,7 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                     type="button"
                     disabled={isProcessingPayment}
                     onClick={handleProcessPayment}
-                    className="w-full sm:w-auto brut-btn px-8 sm:px-12 py-4 text-xl sm:text-2xl"
+                    className="w-full sm:w-auto brut-btn px-10 sm:px-14 py-5 text-xl sm:text-2xl"
                   >
                     {isProcessingPayment ? 'RÈGLEMENT EN COURS...' : `PAYER ${formatFCFA(totalPrice)} →`}
                   </button>
@@ -497,7 +631,7 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
                   <button
                     type="button"
                     onClick={handleProcessPayment}
-                    className="w-full sm:w-auto brut-btn px-8 sm:px-12 py-4 text-xl sm:text-2xl bg-[#C85A17] border-[#C85A17]"
+                    className="w-full sm:w-auto brut-btn px-10 sm:px-14 py-5 text-xl sm:text-2xl bg-[#C85A17] border-[#C85A17]"
                   >
                     [ RÉESSAYER LE PAIEMENT ]
                   </button>
@@ -508,14 +642,14 @@ export const OrderCheckout: React.FC<OrderCheckoutProps> = ({ go, onOrderComplet
         </AnimatePresence>
       </div>
 
-      {/* Barre fixe en bas sur mobile pour garder le total toujours visible */}
+      {/* Barre fixe en bas sur mobile */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0c1c11] border-t-4 border-[#C85A17] px-4 py-3 flex items-center justify-between pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
         <div>
           <span className="font-display text-[10px] text-[#F4F1EA]/60 uppercase block">TOTAL COMMANDE</span>
           <span className="font-display text-xl text-[#C85A17] leading-none">{formatFCFA(totalPrice)}</span>
         </div>
         <div className="font-display text-xs text-[#F4F1EA]">
-          {quantity}x {categoryName}
+          {totalQuantity} BILLET{totalQuantity > 1 ? 'S' : ''}
         </div>
       </div>
     </div>
