@@ -92,13 +92,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentRoute, go, chil
                     'SUPER_ADMIN',
                     'RESPONSABLE_BILLETTERIE',
                     'RESPONSABLE_FINANCIER',
-                    'AGENT_CONTROLE'
+                    'AGENT_CONTROLE',
+                    'FESTIVALIER'
                   ] as UserRole[]
                 ).map((r) => (
                   <button
                     key={r}
                     type="button"
-                    onClick={() => handleRoleChange(r)}
+                    onClick={() => {
+                      if (r === 'FESTIVALIER') {
+                        handleRoleChange(r);
+                        go('/compte/mes-billets');
+                      } else {
+                        handleRoleChange(r);
+                      }
+                    }}
                     className={`w-full text-left px-2.5 py-1.5 text-xs rounded-md flex items-center justify-between cursor-pointer transition-colors ${
                       role === r
                         ? 'bg-slate-100 text-slate-900 font-semibold'

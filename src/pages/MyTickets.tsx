@@ -10,12 +10,14 @@ import { PanoramicTicket } from '../components/PanoramicTicket.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
 import { ticketPdfService } from '../services/ticketPdfService.ts';
 
+import { adminService } from '../services/adminService.ts';
+
 interface MyTicketsProps {
   go: (route: string) => void;
 }
 
 export const MyTickets: React.FC<MyTicketsProps> = ({ go }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [tickets, setTickets] = useState<DigitalTicket[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeQrModal, setActiveQrModal] = useState<{ url: string; ref: string } | null>(null);
@@ -52,17 +54,53 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ go }) => {
   return (
     <div className="w-full min-h-[calc(100vh-140px)] flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-8 max-w-6xl mx-auto select-none pb-28">
       <div>
-        {/* Titre & Sous-titre officiel de la Page */}
-        <div className="mb-10 sm:mb-12">
-          <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
-            ESPACE PERSONNEL · {user ? `${user.firstName} ${user.lastName}` : 'FESTIVALIER'}
-          </span>
-          <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
-            MES BILLETS
-          </h1>
-          <p className="font-body text-xs sm:text-sm text-[#F4F1EA]/70 mt-2 uppercase tracking-wide">
-            DÉFILEMENT VERTICAL · PASS OFFICIELS POUR LES 27 & 28 DÉCEMBRE 2026
-          </p>
+        {/* Titre & Sous-titre officiel de la Page avec Actions Profil */}
+        <div className="mb-10 sm:mb-12 pb-6 border-b border-[#F4F1EA]/20">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <span className="font-display text-xs sm:text-sm text-[#C85A17] tracking-widest uppercase block mb-1">
+                ESPACE PERSONNEL · {user ? `${user.firstName} ${user.lastName}` : 'KOFFI KOUASSI MARC'}
+              </span>
+              <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl text-[#F4F1EA] leading-none">
+                MES BILLETS
+              </h1>
+              <p className="font-body text-xs sm:text-sm text-[#F4F1EA]/70 mt-2 uppercase tracking-wide">
+                DÉFILEMENT VERTICAL · PASS OFFICIELS POUR LES 27 & 28 DÉCEMBRE 2026
+              </p>
+            </div>
+
+            {/* Barre de contrôle profil : Changer profil pour passer sur administrateur, espace administration, déconnexion */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
+              <button
+                type="button"
+                onClick={() => {
+                  adminService.setAdminRole('SUPER_ADMIN');
+                  go('/admin');
+                }}
+                className="px-3 py-1.5 border-2 border-[#C85A17] text-[#F4F1EA] bg-[#C85A17]/25 hover:bg-[#C85A17] font-display text-xs sm:text-sm uppercase tracking-wider transition-colors cursor-pointer"
+                title="Passer sur le profil administrateur du festival"
+              >
+                [ PASSER SUR ADMINISTRATEUR ]
+              </button>
+              <button
+                type="button"
+                onClick={() => go('/admin')}
+                className="px-3 py-1.5 border border-[#F4F1EA]/40 text-[#F4F1EA] hover:border-[#F4F1EA] hover:bg-[#F4F1EA]/10 font-display text-xs sm:text-sm uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                [ ESPACE ADMINISTRATION ]
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await logout();
+                  go('/');
+                }}
+                className="px-3 py-1.5 border border-red-500/60 text-red-400 hover:bg-red-500 hover:text-white font-display text-xs sm:text-sm uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                [ DÉCONNEXION ]
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* État 1 : Chargement */}

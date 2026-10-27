@@ -28,6 +28,7 @@ import { AdminOrders } from './pages/admin/AdminOrders.tsx';
 import { AdminAccessControl } from './pages/admin/AdminAccessControl.tsx';
 import { AdminFinances } from './pages/admin/AdminFinances.tsx';
 import { AdminTeam } from './pages/admin/AdminTeam.tsx';
+import { adminService } from './services/adminService.ts';
 
 interface ParsedRoute {
   path: string;
@@ -178,37 +179,74 @@ function AppContent() {
 
               {/* Lien Compte sur la MÊME LIGNE HORIZONTALE */}
               <div className="relative shrink-0">
-                {user ? (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="px-2 py-0.5 xs:px-2.5 xs:py-1 border border-[#C85A17] sm:border-2 bg-[#C85A17]/20 font-display text-[11px] xs:text-xs sm:text-base text-[#F4F1EA] hover:bg-[#C85A17] transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
-                    >
-                      <span className="truncate max-w-[70px] xs:max-w-[90px]">{user.firstName}</span>
-                      <span className="text-[9px] text-[#C85A17] group-hover:text-white">▼</span>
-                    </button>
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className={`font-display text-xs xs:text-sm sm:text-base md:text-lg uppercase cursor-pointer whitespace-nowrap px-1 py-0.5 flex items-center gap-1 transition-colors ${
+                    isMyTickets || userMenuOpen
+                      ? 'text-[#C85A17] font-bold'
+                      : 'text-[#F4F1EA]/90 hover:text-[#C85A17]'
+                  }`}
+                  aria-expanded={userMenuOpen}
+                >
+                  <span>COMPTE</span>
+                  <span className="text-[9px] text-[#C85A17]">▼</span>
+                </button>
 
-                    {/* Menu déroulant brutaliste du compte */}
-                    {userMenuOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-48 sm:w-52 border-4 border-[#F4F1EA] bg-[#0c1c11] shadow-[6px_6px_0px_#C85A17] z-50 flex flex-col p-2 space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => go('/compte/mes-billets')}
-                          className="w-full text-left p-2 font-display text-xs sm:text-sm text-[#F4F1EA] hover:bg-[#C85A17] transition-colors cursor-pointer"
-                        >
-                          [ MES BILLETS ]
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => go('/admin')}
-                          className="w-full text-left p-2 font-display text-xs text-[#EAD9A4] hover:bg-[#C85A17] hover:text-white transition-colors cursor-pointer"
-                        >
-                          [ ESPACE ADMINISTRATION ]
-                        </button>
+                {/* Menu déroulant brutaliste du compte */}
+                {userMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setUserMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-56 sm:w-64 border-4 border-[#F4F1EA] bg-[#0c1c11] shadow-[6px_6px_0px_#C85A17] z-50 flex flex-col p-2 space-y-1">
+                      <div className="px-2 py-1.5 border-b border-[#F4F1EA]/20 mb-1">
+                        <span className="text-[10px] text-[#C85A17] font-mono uppercase block">PROFIL ACTIF</span>
+                        <span className="font-display text-xs text-[#F4F1EA] truncate block">
+                          {user ? `${user.firstName} ${user.lastName}` : 'KOFFI KOUASSI MARC'}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          go('/compte/mes-billets');
+                        }}
+                        className="w-full text-left p-2 font-display text-xs sm:text-sm text-[#F4F1EA] hover:bg-[#C85A17] transition-colors cursor-pointer"
+                      >
+                        [ MES BILLETS ]
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          adminService.setAdminRole('SUPER_ADMIN');
+                          setUserMenuOpen(false);
+                          go('/admin');
+                        }}
+                        className="w-full text-left p-2 font-display text-xs text-[#F4F1EA] hover:bg-[#C85A17] transition-colors cursor-pointer"
+                      >
+                        [ PASSER SUR ADMINISTRATEUR ]
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          go('/admin');
+                        }}
+                        className="w-full text-left p-2 font-display text-xs text-[#EAD9A4] hover:bg-[#C85A17] hover:text-white transition-colors cursor-pointer"
+                      >
+                        [ ESPACE ADMINISTRATION ]
+                      </button>
+
+                      {user ? (
                         <button
                           type="button"
                           onClick={async () => {
+                            setUserMenuOpen(false);
                             await logout();
                             go('/');
                           }}
@@ -216,21 +254,24 @@ function AppContent() {
                         >
                           [ DÉCONNEXION ]
                         </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => go(`/compte/connexion?next=${encodeURIComponent(currentPath)}`)}
-                    className="font-display text-xs xs:text-sm sm:text-base md:text-lg text-[#F4F1EA]/90 hover:text-[#C85A17] uppercase cursor-pointer whitespace-nowrap px-1 py-0.5"
-                  >
-                    COMPTE
-                  </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            go('/compte/connexion?next=/compte/mes-billets');
+                          }}
+                          className="w-full text-left p-2 font-display text-xs text-[#C85A17] hover:bg-[#C85A17] hover:text-[#F4F1EA] transition-colors cursor-pointer"
+                        >
+                          [ SE CONNECTER ]
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
-          </header>}
+          </header>
         )}
 
         {/* Transition entre pages avec AnimatePresence mode="wait" (0.2s) */}

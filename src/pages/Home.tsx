@@ -80,13 +80,15 @@ export const Home: React.FC<HomeProps> = ({ go }) => {
                   }`}
                 >
                   {item.art ? (
-                    <img
-                      src={item.art}
-                      alt={item.label}
-                      className={`h-7 xs:h-9 sm:h-12 md:h-16 lg:h-20 w-auto object-contain transition-all duration-150 ${
-                        isOpen ? 'brightness-110 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]' : 'opacity-90 hover:opacity-100'
-                      }`}
-                    />
+                    <div className="flex-1 flex items-center justify-start overflow-hidden pr-2">
+                      <img
+                        src={item.art}
+                        alt={item.label}
+                        className={`h-7 xs:h-9 sm:h-12 md:h-16 lg:h-20 max-w-full w-auto object-contain object-left transition-all duration-150 ${
+                          isOpen ? 'brightness-110 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]' : 'opacity-90 hover:opacity-100'
+                        }`}
+                      />
+                    </div>
                   ) : (
                     <span className="font-display text-5xl sm:text-7xl lg:text-8xl leading-none">
                       {item.label}
